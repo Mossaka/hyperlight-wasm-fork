@@ -65,9 +65,46 @@ pub extern "C" fn wasmtime_page_size() -> usize {
 type wasmtime_trap_handler_t =
     extern "C" fn(ip: usize, fp: usize, has_faulting_addr: bool, faulting_addr: usize);
 
+static wasmtime_requested_trap_handler: core::sync::atomic::AtomicU64 =
+    core::sync::atomic::AtomicU64::new(0);
+fn wasmtime_trap_handler(
+    exception_number: u64,
+    info: *mut hyperlight_guest::interrupt_handlers::ExceptionInfo,
+    ctx: *mut hyperlight_guest::interrupt_handlers::Context,
+    page_fault_address: u64
+) -> bool {
+    let requested_handler = wasmtime_requested_trap_handler
+        .load(core::sync::atomic::Ordering::Relaxed);
+    if requested_handler != 0 {
+        if exception_number == 6 { // #UD
+            // we assume that handle_trap alwas longjmp's away, so don't bother
+            // setting up a terribly proper stack frame
+            unsafe {
+                let orig_rip = (&raw mut (*info).rip).read_volatile();
+                (&raw mut (*info).rip).write_volatile(requested_handler);
+                // TODO: This only works on amd64 sysv
+                (&raw mut (*ctx).gprs[9]).write_volatile(orig_rip);
+                let orig_rbp = (&raw mut (*ctx).gprs[8]).read_volatile();
+                (&raw mut (*ctx).gprs[10]).write_volatile(orig_rbp);
+                (&raw mut (*ctx).gprs[11]).write_volatile(0);
+                (&raw mut (*ctx).gprs[12]).write_volatile(0);
+            }
+            return true;
+        }
+    }
+    return false;
+}
 // TODO: Correctly handle traps.
 #[no_mangle]
-pub extern "C" fn wasmtime_init_traps(_handler: wasmtime_trap_handler_t) -> i32 {
+pub extern "C" fn wasmtime_init_traps(handler: wasmtime_trap_handler_t) -> i32 {
+    wasmtime_requested_trap_handler.store(
+        handler as u64,
+        core::sync::atomic::Ordering::Relaxed,
+    );
+    hyperlight_guest::interrupt_handlers::handlers[6].store(
+        wasmtime_trap_handler as u64,
+        core::sync::atomic::Ordering::Release,
+    );
     0
 }
 
