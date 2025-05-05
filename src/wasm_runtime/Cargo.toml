@@ -13,7 +13,7 @@ bench = false
 [dependencies]
 hyperlight-common = { git = "https://github.com/mossaka/hyperlight", branch = "working-for-mcp", default-features = false }
 hyperlight-guest = { git = "https://github.com/mossaka/hyperlight", branch = "working-for-mcp", features = [ "printf" ] }
-wasmtime = { version = "30.0.2", default-features = false, features = [ "runtime", "custom-virtual-memory", "custom-native-signals", "component-model" ] }
+wasmtime = { version = "32.0.0", default-features = false, features = [ "runtime", "component-model" ] }
 hyperlight-wasm-macro = { path = "../hyperlight_wasm_macro" }
 spin = "0.9.8"
 
