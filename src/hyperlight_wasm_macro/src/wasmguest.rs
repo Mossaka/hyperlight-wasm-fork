@@ -102,7 +102,7 @@ fn emit_import_extern_decl<'a, 'b, 'c>(
                 let (b, _) = s.resolve_tv(*b);
                 let li = format_ident!("li{}", depth);
                 let edkn = ed.kebab_name;
-                let rtid = format_ident!("HostResource{}", b);
+                let rtid = format_ident!("HostResource{}", s.var_offset as u32 + b);
                 quote! {
                     #li.resource(#edkn, ::wasmtime::component::ResourceType::host::<#rtid>(), |_, _| { Ok(()) });
                 }
