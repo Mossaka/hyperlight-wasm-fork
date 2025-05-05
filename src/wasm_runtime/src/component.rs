@@ -72,6 +72,13 @@ fn load_wasm_module(function_call: &FunctionCall) -> Result<Vec<u8>> {
     }
 }
 
+struct NoopCodeMemory {}
+impl wasmtime::CustomCodeMemory for NoopCodeMemory {
+    fn required_alignment(&self) -> usize { 1 }
+    fn publish_executable(&self, _ptr: *const u8, _len: usize) -> core::result::Result<(), wasmtime::Error> { Ok(()) }
+    fn unpublish_executable(&self, _ptr: *const u8, _len: usize) -> core::result::Result<(), wasmtime::Error> { Ok(()) }
+}
+
 #[no_mangle]
 pub extern "C" fn hyperlight_main() {
     let mut config = Config::new();
@@ -79,6 +86,10 @@ pub extern "C" fn hyperlight_main() {
     config.memory_guard_size(0);
     config.memory_reservation_for_growth(0);
     config.guard_before_linear_memory(false);
+    config.allocation_strategy(wasmtime::InstanceAllocationStrategy::OnDemand);
+    config.signals_based_traps(false);
+    config.memory_init_cow(false);
+    config.with_custom_code_memory(Some(alloc::sync::Arc::new(NoopCodeMemory {})));
     let engine = Engine::new(&config).unwrap();
     let linker = Linker::new(&engine);
     *CUR_ENGINE.lock() = Some(engine);

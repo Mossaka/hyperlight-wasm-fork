@@ -154,5 +154,7 @@ fn get_config() -> Config {
     config.memory_reservation_for_growth(0);
     config.memory_guard_size(0);
     config.guard_before_linear_memory(false);
+    config.signals_based_traps(false);
+    config.memory_init_cow(false);
     config
 }
